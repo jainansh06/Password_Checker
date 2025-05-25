@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Strength Checker</title>
+    <style>
+        /* Basic CSS - typical beginner styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input[type="password"], input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #5a67d8;
+        }
+        
+        .strength-meter {
+            width: 100%;
+            height: 20px;
+            background: #eee;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .strength-bar {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        
+        .very-weak { background: #e53e3e; }
+        .weak { background: #ff8c00; }
+        .moderate { background: #ffd700; }
+        .strong { background: #32cd32; }
+        .very-strong { background: #228b22; }
+        
+        .requirements {
+            margin: 20px 0;
+        }
+        
+        .requirement {
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 3px;
+        }
+        
+        .requirement.met {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .requirement.not-met {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .breach-result {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        
+        .breach-safe {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .breach-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .generator-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 10px 0;
+        }
+        
+        .history-section {
+            background: #f1f3f4;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        
+        .history-item {
+            background: white;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            color: #666;
+        }
+        
+        .error {
+            color: #e53e3e;
+            background: #fed7d7;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .success {
+            color: #155724;
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        /* Responsive design - basic */
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .checkbox-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Password Strength Checker</h1>
+        <div class="form-group">
+            <label for="password">Enter your password:</label>
+            <input type="password" id="password" placeholder="Type your password here...">
+            <button onclick="togglePasswordVisibility()">👁️ Show/Hide</button>
+            <button onclick="checkPassword()">Check Strength</button>
+        </div>
+        <div id="strength-display" style="display: none;">
+            <h3>Password Strength: <span id="strength-level"></span></h3>
+            <div class="strength-meter">
+                <div id="strength-bar" class="strength-bar"></div>
+            </div>
+            <p>Score: <span id="strength-score"></span>/100</p>
+        </div>
+        <div id="requirements-section" style="display: none;">
+            <h3>Password Requirements:</h3>
+            <div id="requirements-list" class="requirements"></div>
+        </div>
+        <div class="form-group">
+            <button onclick="checkBreach()">🛡️ Check for Data Breaches</button>
+            <div id="breach-loading" class="loading">Checking breaches...</div>
+            <div id="breach-result"></div>
+        </div>
+        <div class="generator-section">
+            <h3>🎲 Password Generator</h3>
+            <div class="form-group">
+                <label for="gen-length">Password Length: <span id="length-display">12</span></label>
+                <input type="range" id="gen-length" min="8" max="32" value="12" onchange="updateLengthDisplay()">
+            </div>
+            <div class="checkbox-group">
+                <label><input type="checkbox" id="gen-uppercase" checked> Uppercase (A-Z)</label>
+                <label><input type="checkbox" id="gen-lowercase" checked> Lowercase (a-z)</label>
+                <label><input type="checkbox" id="gen-numbers" checked> Numbers (0-9)</label>
+                <label><input type="checkbox" id="gen-symbols" checked> Symbols (!@#$)</label>
+            </div>
+            <div class="form-group">
+                <input type="text" id="generated-password" readonly placeholder="Generated password will appear here">
+                <button onclick="generatePassword()">Generate</button>
+                <button onclick="copyPassword()">📋 Copy</button>
+                <button onclick="useGeneratedPassword()">Use This Password</button>
+            </div>
+        </div>
+        <div class="history-section">
+            <h3>📊 Password History</h3>
+            <button onclick="saveToHistory()">Save Current Analysis</button>
+            <button onclick="loadHistory()">Load History</button>
+            <button onclick="clearHistory()">Clear History</button>
+            <div id="history-list"></div>
+        </div>
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        
+        let currentPassword = '';
+        
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('password');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+            } else {
+                passwordInput.type = 'password';
+            }
+        }
+        
+        function checkPassword() {
+            const password = document.getElementById('password').value;
+            currentPassword = password;
+            
+            if (!password) {
+                showMessage('Please enter a password', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('password', password);
+            
+            fetch('/check_password', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showMessage(data.error, 'error');
+                    return;
+                }
+                
+                displayStrength(data);
+                displayRequirements(data.requirements);
+            })
+            .catch(error => {
+                console.log('Error:', error);
+                showMessage('Error checking password', 'error');
+            });
+        }
+        
+        function displayStrength(data) {
+            const strengthDisplay = document.getElementById('strength-display');
+            const strengthLevel = document.getElementById('strength-level');
+            const strengthBar = document.getElementById('strength-bar');
+            const strengthScore = document.getElementById('strength-score');
+            
+            strengthDisplay.style.display = 'block';
+            strengthLevel.textContent = data.strength_level;
+            strengthScore.textContent = data.strength_score;
+            
+            strengthBar.style.width = data.strength_score + '%';
+            
+            strengthBar.className = 'strength-bar';
+            if (data.strength_level === 'Very Weak') {
+                strengthBar.classList.add('very-weak');
+            } else if (data.strength_level === 'Weak') {
+                strengthBar.classList.add('weak');
+            } else if (data.strength_level === 'Moderate') {
+                strengthBar.classList.add('moderate');
+            } else if (data.strength_level === 'Strong') {
+                strengthBar.classList.add('strong');
+            } else {
+                strengthBar.classList.add('very-strong');
+            }
+        }
+        
+        function displayRequirements(requirements) {
+            const section = document.getElementById('requirements-section');
+            const list = document.getElementById('requirements-list');
+            
+            section.style.display = 'block';
+            list.innerHTML = '';
+            
+            requirements.forEach(req => {
+                const div = document.createElement('div');
+                div.className = 'requirement ' + (req.met ? 'met' : 'not-met');
+                div.innerHTML = (req.met ? '✅ ' : '❌ ') + req.text;
+                list.appendChild(div);
+            });
+        }
+        
+        function checkBreach() {
+            const password = document.getElementById('password').value;
+            
+            if (!password) {
+                showMessage('Please enter a password first', 'error');
+                return;
+            }
+            
+            const loading = document.getElementById('breach-loading');
+            const result = document.getElementById('breach-result');
+            
+            loading.style.display = 'block';
+            result.innerHTML = '';
+            
+            const formData = new FormData();
+            formData.append('password', password);
+            
+            fetch('/check_breach', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                loading.style.display = 'none';
+                
+                if (data.error) {
+                    result.innerHTML = '<div class="error">' + data.error + '</div>';
+                    return;
+                }
+                
+                const className = data.breached ? 'breach-danger' : 'breach-safe';
+                result.innerHTML = '<div class="breach-result ' + className + '">' + data.message + '</div>';
+            })
+            .catch(error => {
+                loading.style.display = 'none';
+                result.innerHTML = '<div class="error">Error checking breaches</div>';
+            });
+        }
+        
+        function updateLengthDisplay() {
+            const slider = document.getElementById('gen-length');
+            const display = document.getElementById('length-display');
+            display.textContent = slider.value;
+        }
+        
+        function generatePassword() {
+            const length = document.getElementById('gen-length').value;
+            const uppercase = document.getElementById('gen-uppercase').checked;
+            const lowercase = document.getElementById('gen-lowercase').checked;
+            const numbers = document.getElementById('gen-numbers').checked;
+            const symbols = document.getElementById('gen-symbols').checked;
+            
+            const formData = new FormData();
+            formData.append('length', length);
+            if (uppercase) formData.append('uppercase', 'on');
+            if (lowercase) formData.append('lowercase', 'on');
+            if (numbers) formData.append('numbers', 'on');
+            if (symbols) formData.append('symbols', 'on');
+            
+            fetch('/generate_password', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showMessage(data.error, 'error');
+                    return;
+                }
+                
+                document.getElementById('generated-password').value = data.password;
+            })
+            .catch(error => {
+                showMessage('Error generating password', 'error');
+            });
+        }
+        
+        function copyPassword() {
+            const passwordField = document.getElementById('generated-password');
+            passwordField.select();
+            document.execCommand('copy');
+            showMessage('Password copied to clipboard!', 'success');
+        }
+        
+        function useGeneratedPassword() {
+            const generatedPassword = document.getElementById('generated-password').value;
+            if (generatedPassword) {
+                document.getElementById('password').value = generatedPassword;
+                checkPassword();
+            }
+        }
+        
+        function saveToHistory() {
+            const password = document.getElementById('password').value;
+            
+            if (!password) {
+                showMessage('Please enter a password first', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('password', password);
+            
+            fetch('/save_history', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showMessage(data.error, 'error');
+                } else {
+                    showMessage(data.message, 'success');
+                    loadHistory();
+                }
+            });
+        }
+        
+        function loadHistory() {
+            fetch('/get_history')
+            .then(response => response.json())
+            .then(data => {
+                const historyList = document.getElementById('history-list');
+                historyList.innerHTML = '';
+                
+                if (data.history.length === 0) {
+                    historyList.innerHTML = '<p>No password history found.</p>';
+                    return;
+                }
+                
+                data.history.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'history-item';
+                    div.innerHTML = `
+                        <strong>Strength:</strong> ${item.strength} (${item.score}/100)<br>
+                        <strong>Length:</strong> ${item.length} characters<br>
+                        <strong>Date:</strong> ${item.timestamp}
+                    `;
+                    historyList.appendChild(div);
+                });
+            });
+        }
+        
+        function clearHistory() {
+            if (confirm('Are you sure you want to clear all history?')) {
+                fetch('/clear_history', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    showMessage(data.message, 'success');
+                    loadHistory();
+                });
+            }
+        }
+        
+        function showMessage(message, type) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type;
+            messageDiv.textContent = message;
+            
+            messagesDiv.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 3000);
+        }
+        
+        document.getElementById('password').addEventListener('input', function() {
+            const password = this.value;
+            if (password.length > 3) {
+                clearTimeout(window.passwordTimeout);
+                window.passwordTimeout = setTimeout(() => {
+                    checkPassword();
+                }, 500);
+            }
+        });
+        window.onload = function() {
+            loadHistory();
+        };
+    </script>
+</body>
+</html>
